@@ -205,30 +205,55 @@
             }
         }
 
-        // 5. Extract Logic (Video Frame)
+       // 5. Extract Logic (Video Frame) - UPDATE VERSI RESIZE
         async function captureFrame() {
             const apiKey = document.getElementById('apiKeyInput').value;
             if (!apiKey) return alert("Masukkan API Key dulu di atas!");
 
-            setStatus("Mengambil frame video & mengirim ke AI...", true);
+            setStatus("Memproses frame & compress...", true);
 
             try {
+                // Ambil elemen video
+                const video = document.getElementById('videoPreview');
+                
+                // Cek dimensi asli video
+                let w = video.videoWidth;
+                let h = video.videoHeight;
+                
+                if (!w || !h) {
+                    throw new Error("Ukuran video belum terdeteksi. Coba Play sebentar lalu Pause.");
+                }
+
+                // LOGIC RESIZE: Batasi lebar maksimal 1024px biar ringan
+                const MAX_WIDTH = 1024;
+                if (w > MAX_WIDTH) {
+                    const scale = MAX_WIDTH / w;
+                    w = MAX_WIDTH;
+                    h = Math.floor(h * scale);
+                }
+
+                // Set ukuran canvas sesuai hasil resize
+                canvas.width = w;
+                canvas.height = h;
+                
                 // Gambar frame video ke canvas
-                canvas.width = videoPreview.videoWidth;
-                canvas.height = videoPreview.videoHeight;
-                canvas.getContext('2d').drawImage(videoPreview, 0, 0, canvas.width, canvas.height);
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(video, 0, 0, w, h);
                 
-                // Convert canvas ke base64
-                const base64Full = canvas.toDataURL('image/jpeg');
+                // Convert canvas ke base64 (Format JPEG, Kualitas 0.7 biar hemat bandwidth)
+                // Ini kuncinya biar gak error payload kegedean
+                const base64Full = canvas.toDataURL('image/jpeg', 0.7);
                 
+                // Kirim ke fungsi API
+                setStatus("Mengirim frame ke AI...", true);
                 await callGroqVision(apiKey, base64Full);
 
             } catch (error) {
-                console.error(error);
-                setStatus("Error processing video frame.", false);
+                console.error("Capture Error:", error);
+                // Tampilkan pesan error asli biar ketahuan salahnya dimana
+                setStatus("Gagal: " + error.message, false);
             }
         }
-
         // 6. Core API Call (Vision)
         async function callGroqVision(apiKey, base64Image) {
             const payload = {
@@ -345,4 +370,5 @@
         }
     </script>
 </body>
+
 </html>
