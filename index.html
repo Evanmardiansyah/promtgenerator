@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Prompt Extractor & Generator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Custom scrollbar biar manis */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #1f2937; }
+        ::-webkit-scrollbar-thumb { background: #4f46e5; border-radius: 4px; }
+        .glass-panel {
+            background: rgba(31, 41, 55, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(75, 85, 99, 0.4);
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-100 font-sans min-h-screen selection:bg-indigo-500 selection:text-white">
+
+    <nav class="border-b border-gray-700 bg-gray-800 p-4 sticky top-0 z-50">
+        <div class="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+            <h1 class="text-xl font-bold text-indigo-400"><i class="fa-solid fa-eye"></i> Vision Prompt Architect</h1>
+            <div class="flex gap-2 w-full md:w-auto">
+                <input type="password" id="apiKeyInput" placeholder="Masukkan Groq API Key (gsk_...)" 
+                    class="bg-gray-700 text-sm border border-gray-600 rounded px-3 py-2 w-full md:w-80 focus:outline-none focus:border-indigo-500 transition">
+                <button onclick="saveKey()" class="bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded text-sm font-semibold transition">
+                    Save Key
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-6xl mx-auto p-4 md:p-8 grid grid-cols-1 md:grid-cols-2 gap-8">
+        
+        <div class="flex flex-col gap-6">
+            
+            <div class="glass-panel p-6 rounded-xl shadow-lg">
+                <h2 class="text-lg font-semibold mb-4 text-indigo-300"><i class="fa-solid fa-upload"></i> 1. Upload Media</h2>
+                <div class="border-2 border-dashed border-gray-600 rounded-lg p-8 text-center hover:border-indigo-500 transition cursor-pointer relative" id="dropZone">
+                    <input type="file" id="fileInput" accept="image/*,video/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
+                    <div class="space-y-2">
+                        <i class="fa-solid fa-cloud-arrow-up text-4xl text-gray-500"></i>
+                        <p class="text-gray-400 text-sm">Drag & drop Gambar atau Video di sini<br>atau klik untuk browse</p>
+                    </div>
+                </div>
+
+                <div id="previewContainer" class="mt-4 hidden">
+                    <p class="text-xs text-gray-400 mb-2">Preview:</p>
+                    <img id="imgPreview" class="w-full rounded-lg shadow-md hidden border border-gray-600 object-cover max-h-80">
+                    
+                    <video id="videoPreview" controls class="w-full rounded-lg shadow-md hidden border border-gray-600 max-h-80"></video>
+                    
+                    <div id="videoTools" class="mt-2 hidden">
+                        <button onclick="captureFrame()" class="w-full bg-green-600 hover:bg-green-700 py-2 rounded text-sm font-semibold shadow-lg transition">
+                            <i class="fa-solid fa-camera"></i> Ambil Frame & Ekstrak
+                        </button>
+                        <p class="text-xs text-gray-500 mt-1 text-center">*Pause video di momen pas, lalu klik tombol di atas.</p>
+                    </div>
+
+                    <button id="extractBtn" onclick="extractPrompt()" class="w-full mt-4 bg-indigo-600 hover:bg-indigo-700 py-3 rounded text-sm font-bold shadow-lg transition hidden">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i> Ekstrak Prompt
+                    </button>
+                </div>
+            </div>
+
+            <div id="statusLog" class="text-sm text-gray-400 italic min-h-[20px]"></div>
+        </div>
+
+        <div class="flex flex-col gap-6">
+            <div class="glass-panel p-6 rounded-xl shadow-lg h-full flex flex-col">
+                <h2 class="text-lg font-semibold mb-4 text-indigo-300"><i class="fa-solid fa-pen-nib"></i> 2. Hasil & Generator</h2>
+                
+                <div class="relative flex-grow">
+                    <textarea id="promptOutput" placeholder="Hasil prompt akan muncul di sini..." 
+                        class="w-full h-64 md:h-80 bg-gray-800 border border-gray-600 rounded-lg p-4 text-sm focus:outline-none focus:border-indigo-500 resize-none font-mono leading-relaxed"></textarea>
+                    
+                    <button onclick="copyToClipboard()" class="absolute top-2 right-2 bg-gray-700 hover:bg-gray-600 text-xs px-2 py-1 rounded border border-gray-500 transition">
+                        <i class="fa-regular fa-copy"></i> Copy
+                    </button>
+                </div>
+
+                <div class="mt-4">
+                    <p class="text-sm text-gray-400 mb-2 font-semibold">Remix / Kembangkan Prompt:</p>
+                    <div class="grid grid-cols-2 gap-2 mb-2">
+                        <button onclick="remixPrompt('Cinematic')" class="bg-gray-700 hover:bg-blue-600 py-2 rounded text-xs transition border border-gray-600">
+                            🎥 Cinematic Realistic
+                        </button>
+                        <button onclick="remixPrompt('Anime')" class="bg-gray-700 hover:bg-pink-600 py-2 rounded text-xs transition border border-gray-600">
+                            ⛩️ Anime Style
+                        </button>
+                        <button onclick="remixPrompt('3D Render')" class="bg-gray-700 hover:bg-purple-600 py-2 rounded text-xs transition border border-gray-600">
+                            🧊 3D Octane Render
+                        </button>
+                        <button onclick="remixPrompt('Detailed')" class="bg-gray-700 hover:bg-green-600 py-2 rounded text-xs transition border border-gray-600">
+                            🔍 Tambah Detail
+                        </button>
+                    </div>
+                </div>
+
+                <div class="flex gap-2 mt-2">
+                    <input type="text" id="customInstruction" placeholder="Contoh: Ubah jadi suasana malam hari..." 
+                        class="bg-gray-800 text-sm border border-gray-600 rounded px-3 py-2 w-full focus:outline-none focus:border-indigo-500">
+                    <button onclick="customRemix()" class="bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded text-sm font-semibold transition">
+                        <i class="fa-solid fa-paper-plane"></i>
+                    </button>
+                </div>
+
+            </div>
+        </div>
+
+    </main>
+
+    <footer class="text-center p-6 text-gray-600 text-sm">
+        <p>Created for Prompt Engineering • Powered by Groq Llama Vision</p>
+    </footer>
+
+    <script>
+        const fileInput = document.getElementById('fileInput');
+        const imgPreview = document.getElementById('imgPreview');
+        const videoPreview = document.getElementById('videoPreview');
+        const previewContainer = document.getElementById('previewContainer');
+        const extractBtn = document.getElementById('extractBtn');
+        const videoTools = document.getElementById('videoTools');
+        const statusLog = document.getElementById('statusLog');
+        const promptOutput = document.getElementById('promptOutput');
+        
+        // Canvas tersembunyi untuk grab frame video
+        const canvas = document.createElement('canvas');
+
+        // 1. Load API Key saat web dibuka
+        window.onload = () => {
+            const key = localStorage.getItem('groqApiKey');
+            if(key) {
+                document.getElementById('apiKeyInput').value = key;
+                statusLog.innerText = "API Key loaded from memory.";
+            }
+        };
+
+        function saveKey() {
+            const key = document.getElementById('apiKeyInput').value;
+            if(key.startsWith('gsk_')) {
+                localStorage.setItem('groqApiKey', key);
+                alert('API Key tersimpan aman di browser!');
+            } else {
+                alert('Format API Key sepertinya salah (harus diawali gsk_).');
+            }
+        }
+
+        // 2. Handle File Upload
+        fileInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            previewContainer.classList.remove('hidden');
+            imgPreview.classList.add('hidden');
+            videoPreview.classList.add('hidden');
+            extractBtn.classList.add('hidden');
+            videoTools.classList.add('hidden');
+
+            const url = URL.createObjectURL(file);
+
+            if (file.type.startsWith('image/')) {
+                imgPreview.src = url;
+                imgPreview.classList.remove('hidden');
+                extractBtn.classList.remove('hidden');
+                statusLog.innerText = "Gambar dimuat. Siap ekstrak.";
+            } else if (file.type.startsWith('video/')) {
+                videoPreview.src = url;
+                videoPreview.classList.remove('hidden');
+                videoTools.classList.remove('hidden');
+                statusLog.innerText = "Video dimuat. Pause video & klik tombol hijau untuk ekstrak.";
+            }
+        });
+
+        // 3. Helper: Convert File/Canvas to Base64 (tanpa prefix data:image...)
+        function getBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = error => reject(error);
+            });
+        }
+
+        // 4. Extract Logic (Image)
+        async function extractPrompt() {
+            const apiKey = document.getElementById('apiKeyInput').value;
+            if (!apiKey) return alert("Masukkan API Key dulu di atas!");
+
+            setStatus("Mengirim gambar ke mata AI (Llama-3.2-Vision)...", true);
+            
+            try {
+                // Ambil base64 gambar
+                const file = fileInput.files[0];
+                const base64Full = await getBase64(file); 
+                
+                await callGroqVision(apiKey, base64Full);
+
+            } catch (error) {
+                console.error(error);
+                setStatus("Error: " + error.message, false);
+            }
+        }
+
+        // 5. Extract Logic (Video Frame)
+        async function captureFrame() {
+            const apiKey = document.getElementById('apiKeyInput').value;
+            if (!apiKey) return alert("Masukkan API Key dulu di atas!");
+
+            setStatus("Mengambil frame video & mengirim ke AI...", true);
+
+            try {
+                // Gambar frame video ke canvas
+                canvas.width = videoPreview.videoWidth;
+                canvas.height = videoPreview.videoHeight;
+                canvas.getContext('2d').drawImage(videoPreview, 0, 0, canvas.width, canvas.height);
+                
+                // Convert canvas ke base64
+                const base64Full = canvas.toDataURL('image/jpeg');
+                
+                await callGroqVision(apiKey, base64Full);
+
+            } catch (error) {
+                console.error(error);
+                setStatus("Error processing video frame.", false);
+            }
+        }
+
+        // 6. Core API Call (Vision)
+        async function callGroqVision(apiKey, base64Image) {
+            const payload = {
+                model: "llama-3.2-11b-vision-preview",
+                messages: [
+                    {
+                        role: "user",
+                        content: [
+                            { type: "text", text: "Analyze this image and provide a highly detailed, descriptive text-to-image prompt. Focus on subject, lighting, camera angle, art style, and mood. Provide ONLY the prompt text, no intro." },
+                            { type: "image_url", image_url: { url: base64Image } }
+                        ]
+                    }
+                ],
+                temperature: 0.5,
+                max_tokens: 1024
+            };
+
+            const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+                method: "POST",
+                headers: {
+                    "Authorization": `Bearer ${apiKey}`,
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(payload)
+            });
+
+            const data = await response.json();
+            if (data.error) throw new Error(data.error.message);
+            
+            const result = data.choices[0].message.content;
+            promptOutput.value = result;
+            setStatus("Selesai! Prompt berhasil diekstrak.", false);
+        }
+
+        // 7. Remix / Generator Logic (Text Only)
+        async function remixPrompt(style) {
+            const currentPrompt = promptOutput.value;
+            if (!currentPrompt) return alert("Ekstrak dulu gambar atau ketik prompt!");
+            
+            let systemInstruction = "";
+            
+            switch(style) {
+                case 'Cinematic':
+                    systemInstruction = "Rewrite the user's prompt to be a Cinematic Shot. Add keywords like: 8k, photorealistic, cinematic lighting, bokeh, shot on IMAX.";
+                    break;
+                case 'Anime':
+                    systemInstruction = "Rewrite the user's prompt to be an Anime Style prompt. Add keywords like: Studio Ghibli style, vibrant colors, cel shading, anime masterpiece.";
+                    break;
+                case '3D Render':
+                    systemInstruction = "Rewrite the user's prompt to be a 3D Render style. Add keywords like: Octane render, unreal engine 5, isometric, 3d blender, clay material.";
+                    break;
+                case 'Detailed':
+                    systemInstruction = "Expand the user's prompt with extreme detail. Describe textures, background details, and atmosphere more vividly.";
+                    break;
+            }
+
+            await callGroqText(systemInstruction, currentPrompt);
+        }
+
+        async function customRemix() {
+            const instruction = document.getElementById('customInstruction').value;
+            const currentPrompt = promptOutput.value;
+            if (!currentPrompt || !instruction) return alert("Pastikan ada prompt dan instruksi!");
+            
+            const systemInstruction = `Modify the prompt based on this instruction: "${instruction}". Keep the core subject intact.`;
+            await callGroqText(systemInstruction, currentPrompt);
+        }
+
+        async function callGroqText(sysMsg, userMsg) {
+            const apiKey = document.getElementById('apiKeyInput').value;
+            if (!apiKey) return alert("API Key belum ada.");
+            
+            setStatus("Sedang meracik prompt baru...", true);
+            
+            try {
+                const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+                    method: "POST",
+                    headers: {
+                        "Authorization": `Bearer ${apiKey}`,
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        model: "llama-3.3-70b-versatile",
+                        messages: [
+                            { role: "system", content: "You are an expert AI Prompt Engineer. Output ONLY the final prompt text." },
+                            { role: "user", content: `${sysMsg}\n\nOriginal Prompt: ${userMsg}` }
+                        ]
+                    })
+                });
+
+                const data = await response.json();
+                if (data.error) throw new Error(data.error.message);
+                
+                promptOutput.value = data.choices[0].message.content;
+                setStatus("Remix Selesai!", false);
+
+            } catch (error) {
+                console.error(error);
+                setStatus("Gagal remix: " + error.message, false);
+            }
+        }
+
+        // Utilities
+        function setStatus(msg, isLoading) {
+            statusLog.innerText = msg;
+            if(isLoading) statusLog.classList.add("animate-pulse", "text-indigo-400");
+            else statusLog.classList.remove("animate-pulse", "text-indigo-400");
+        }
+
+        function copyToClipboard() {
+            promptOutput.select();
+            document.execCommand('copy');
+            alert("Prompt tersalin!");
+        }
+    </script>
+</body>
+</html>
