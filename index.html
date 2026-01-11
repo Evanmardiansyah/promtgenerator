@@ -254,10 +254,12 @@
                 setStatus("Gagal: " + error.message, false);
             }
         }
-        // 6. Core API Call (Vision)
+     // 6. Core API Call (Vision) - UPDATE MODEL BARU (LLAMA 4)
         async function callGroqVision(apiKey, base64Image) {
             const payload = {
-                model: "llama-3.2-11b-vision-preview",
+                // GANTI BARIS INI: Pakai ID Model Llama 4 Scout
+                model: "meta-llama/llama-4-scout-17b-16e-instruct", 
+                
                 messages: [
                     {
                         role: "user",
@@ -285,7 +287,7 @@
             
             const result = data.choices[0].message.content;
             promptOutput.value = result;
-            setStatus("Selesai! Prompt berhasil diekstrak.", false);
+            setStatus("Selesai! Prompt berhasil diekstrak (Llama 4).", false);
         }
 
         // 7. Remix / Generator Logic (Text Only)
@@ -372,3 +374,4 @@
 </body>
 
 </html>
+
